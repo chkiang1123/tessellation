@@ -1,0 +1,432 @@
+<!DOCTYPE html><html lang="en"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Tessellation Explorer - With Snapping</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f0f2f5;
+    margin: 0;
+    padding: 20px;
+    user-select: none;
+  }
+  h2 { color: #333; margin-top: 0; }
+
+  #toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    align-items: center;
+    max-width: 850px;
+    justify-content: center;
+  }
+
+  .control-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border-right: 2px solid #e2e8f0;
+    padding-right: 15px;
+  }
+  .control-group:last-child { border-right: none; padding-right: 0; }
+
+  button, select, input {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #fff;
+    font-size: 16px;
+    transition: all 0.2s;
+  }
+
+  button:hover, select:hover { background: #e2e8f0; }
+
+  .mode-btn { background: #f8fafc; color: #475569; }
+  .mode-btn.active { background: #3b82f6; color: white; border-color: #2563eb; }
+
+  input[type="color"] { padding: 0; width: 36px; height: 36px; border: none; background: none; }
+
+  /* The SVG Canvas */
+  svg {
+    background-color: white;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    cursor: default;
+    overflow: hidden;
+    max-width: 100%;
+    touch-action: none;
+  }
+
+  .shape {
+    cursor: pointer;
+    stroke: #334155;
+    stroke-width: 2;
+    transition: filter 0.1s;
+  }
+
+  .shape:hover { filter: brightness(0.9); }
+
+  /* Highlight the currently selected shape */
+  .shape.selected {
+    stroke: #ef4444;
+    stroke-width: 3;
+    stroke-dasharray: 4;
+  }
+
+  .magnet-indicator {
+    font-size: 12px;
+    color: #059669;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* Dark mode */
+  .dark body {
+    background-color: #1e293b;
+    color: #e2e8f0;
+  }
+  .dark h2 { color: #e2e8f0; }
+  .dark #toolbar {
+    background: #334155;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  }
+  .dark button, .dark select, .dark input {
+    background: #475569;
+    color: #e2e8f0;
+    border-color: #64748b;
+  }
+  .dark button:hover, .dark select:hover { background: #64748b; }
+  .dark .mode-btn { background: #475569; color: #cbd5e1; }
+  .dark .mode-btn.active { background: #3b82f6; color: white; border-color: #2563eb; }
+  .dark svg {
+    background-color: #1e293b;
+    border-color: #475569;
+  }
+  .dark .control-group { border-right-color: #475569; }
+  .dark .magnet-indicator { color: #34d399; }
+</style>
+</head>
+<body>
+
+<h2>Advanced Tessellation Explorer</h2>
+
+<div id="toolbar">
+  <div class="control-group">
+    <select id="shapeSelect">
+      <option value="3">Triangle (3)</option>
+      <option value="4">Square (4)</option>
+      <option value="5">Pentagon (5)</option>
+      <option value="6">Hexagon (6)</option>
+      <option value="7">Heptagon (7)</option>
+      <option value="8">Octagon (8)</option>
+      <option value="9">Nonagon (9)</option>
+      <option value="10">Decagon (10)</option>
+      <option value="11">Hendecagon (11)</option>
+      <option value="12">Dodecagon (12)</option>
+    </select>
+    <button id="addBtn" style="font-weight: bold; color: #059669;">➕ Add</button>
+  </div>
+
+  <div class="control-group">
+    <button id="btnMove" class="mode-btn active">🖐️ Move</button>
+    <button id="btnPaint" class="mode-btn">🎨 Paint</button>
+    <button id="btnErase" class="mode-btn">🧽 Eraser</button>
+    <input type="color" id="colorPicker" value="#3b82f6" title="Choose Paint Color">
+  </div>
+
+  <div class="control-group">
+    <button id="rotateCCW" title="Rotate Counter-Clockwise">↺ 15°</button>
+    <button id="rotateCW" title="Rotate Clockwise">↻ 15°</button>
+  </div>
+
+  <div class="control-group">
+    <button id="clearBtn" style="color: #ef4444;">🗑️ Clear All</button>
+  </div>
+
+  <div class="magnet-indicator">🧲 Auto-Snap On</div>
+</div>
+
+<svg id="canvas" width="900" height="600"></svg>
+
+<script>
+  // Dark mode detection
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(event) {
+    if (event.matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  });
+
+  var canvas = document.getElementById('canvas');
+  var SIDE_LENGTH = 50;
+  var SNAP_RADIUS = 20;
+
+  var currentMode = 'move';
+  var selectedElement = null;
+  var isDragging = false;
+  var offset = { x: 0, y: 0 };
+
+  // --- Math Function: Generate Polygon Points ---
+  function generatePolygonPoints(sides) {
+    var radius = SIDE_LENGTH / (2 * Math.sin(Math.PI / sides));
+    var points = [];
+
+    var angleOffset = -Math.PI / 2;
+    if (sides % 2 === 0) { angleOffset -= Math.PI / sides; }
+
+    for (var i = 0; i < sides; i++) {
+      var angle = angleOffset + (i * 2 * Math.PI) / sides;
+      var x = radius * Math.cos(angle);
+      var y = radius * Math.sin(angle);
+      points.push(x + ',' + y);
+    }
+    return points.join(' ');
+  }
+
+  // --- Magnetic Snapping Math ---
+  function getAbsoluteVertices(shape) {
+    var pointsStr = shape.getAttribute('points');
+    var points = pointsStr.split(' ').map(function(p) {
+      var parts = p.split(',').map(Number);
+      return {x: parts[0], y: parts[1]};
+    });
+
+    var cx = parseFloat(shape.getAttribute('data-x'));
+    var cy = parseFloat(shape.getAttribute('data-y'));
+    var angleDeg = parseFloat(shape.getAttribute('data-angle')) || 0;
+    var angleRad = angleDeg * Math.PI / 180;
+
+    return points.map(function(p) {
+      var rx = p.x * Math.cos(angleRad) - p.y * Math.sin(angleRad);
+      var ry = p.x * Math.sin(angleRad) + p.y * Math.cos(angleRad);
+      return { x: rx + cx, y: ry + cy };
+    });
+  }
+
+  function checkAndApplySnap(draggedShape) {
+    var draggedVerts = getAbsoluteVertices(draggedShape);
+    var otherShapes = Array.from(document.querySelectorAll('.shape')).filter(function(s) { return s !== draggedShape; });
+
+    var bestSnap = null;
+    var minDistance = SNAP_RADIUS;
+
+    for (var si = 0; si < otherShapes.length; si++) {
+      var otherVerts = getAbsoluteVertices(otherShapes[si]);
+      for (var di = 0; di < draggedVerts.length; di++) {
+        for (var oi = 0; oi < otherVerts.length; oi++) {
+          var dist = Math.hypot(draggedVerts[di].x - otherVerts[oi].x, draggedVerts[di].y - otherVerts[oi].y);
+          if (dist < minDistance) {
+            minDistance = dist;
+            bestSnap = { dx: otherVerts[oi].x - draggedVerts[di].x, dy: otherVerts[oi].y - draggedVerts[di].y };
+          }
+        }
+      }
+    }
+
+    if (bestSnap) {
+      var currentX = parseFloat(draggedShape.getAttribute('data-x'));
+      var currentY = parseFloat(draggedShape.getAttribute('data-y'));
+      draggedShape.setAttribute('data-x', currentX + bestSnap.dx);
+      draggedShape.setAttribute('data-y', currentY + bestSnap.dy);
+      updateTransform(draggedShape);
+    }
+  }
+
+  // --- Core Application Logic ---
+  function setMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(function(btn) { btn.classList.remove('active'); });
+
+    if(mode === 'move') { document.getElementById('btnMove').classList.add('active'); }
+    if(mode === 'paint') { document.getElementById('btnPaint').classList.add('active'); }
+    if(mode === 'erase') { document.getElementById('btnErase').classList.add('active'); }
+
+    canvas.style.cursor = mode === 'erase' ? 'crosshair' : 'default';
+  }
+
+  function addShape() {
+    var sides = parseInt(document.getElementById('shapeSelect').value);
+    var color = document.getElementById('colorPicker').value;
+
+    var polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    polygon.setAttribute("points", generatePolygonPoints(sides));
+    polygon.setAttribute("fill", color);
+    polygon.setAttribute("class", "shape");
+
+    var startX = 450 + (Math.random() * 60 - 30);
+    var startY = 300 + (Math.random() * 60 - 30);
+
+    polygon.setAttribute('data-x', startX);
+    polygon.setAttribute('data-y', startY);
+    polygon.setAttribute('data-angle', 0);
+
+    updateTransform(polygon);
+    polygon.addEventListener('mousedown', handleShapeInteraction);
+    polygon.addEventListener('touchstart', handleTouchStart, {passive: false});
+    canvas.appendChild(polygon);
+    selectShape(polygon);
+  }
+
+  function handleShapeInteraction(evt) {
+    if (currentMode === 'erase') {
+      evt.target.remove();
+      if (selectedElement === evt.target) { selectedElement = null; }
+      return;
+    }
+
+    if (currentMode === 'paint') {
+      evt.target.setAttribute("fill", document.getElementById('colorPicker').value);
+      return;
+    }
+
+    if (currentMode === 'move') {
+      selectShape(evt.target);
+      isDragging = true;
+      canvas.appendChild(selectedElement);
+
+      var rect = canvas.getBoundingClientRect();
+      var currentX = parseFloat(selectedElement.getAttribute('data-x'));
+      var currentY = parseFloat(selectedElement.getAttribute('data-y'));
+      offset.x = evt.clientX - rect.left - currentX;
+      offset.y = evt.clientY - rect.top - currentY;
+    }
+  }
+
+  function handleTouchStart(evt) {
+    evt.preventDefault();
+    var touch = evt.touches[0];
+    var target = evt.target;
+
+    if (currentMode === 'erase') {
+      target.remove();
+      if (selectedElement === target) { selectedElement = null; }
+      return;
+    }
+
+    if (currentMode === 'paint') {
+      target.setAttribute("fill", document.getElementById('colorPicker').value);
+      return;
+    }
+
+    if (currentMode === 'move') {
+      selectShape(target);
+      isDragging = true;
+      canvas.appendChild(selectedElement);
+
+      var rect = canvas.getBoundingClientRect();
+      var currentX = parseFloat(selectedElement.getAttribute('data-x'));
+      var currentY = parseFloat(selectedElement.getAttribute('data-y'));
+      offset.x = touch.clientX - rect.left - currentX;
+      offset.y = touch.clientY - rect.top - currentY;
+    }
+  }
+
+  function selectShape(shape) {
+    if (selectedElement) { selectedElement.classList.remove('selected'); }
+    selectedElement = shape;
+    selectedElement.classList.add('selected');
+  }
+
+  function rotateSelected(degrees) {
+    if (!selectedElement) { return; }
+    var currentAngle = parseFloat(selectedElement.getAttribute('data-angle')) || 0;
+    currentAngle += degrees;
+    selectedElement.setAttribute('data-angle', currentAngle);
+    updateTransform(selectedElement);
+    checkAndApplySnap(selectedElement);
+  }
+
+  function updateTransform(el) {
+    var x = el.getAttribute('data-x');
+    var y = el.getAttribute('data-y');
+    var angle = el.getAttribute('data-angle');
+    el.setAttribute("transform", "translate(" + x + ", " + y + ") rotate(" + angle + ")");
+  }
+
+  function clearCanvas() {
+    canvas.innerHTML = '';
+    selectedElement = null;
+  }
+
+  // --- Button Event Listeners ---
+  document.getElementById('addBtn').addEventListener('click', addShape);
+  document.getElementById('btnMove').addEventListener('click', function() { setMode('move'); });
+  document.getElementById('btnPaint').addEventListener('click', function() { setMode('paint'); });
+  document.getElementById('btnErase').addEventListener('click', function() { setMode('erase'); });
+  document.getElementById('rotateCCW').addEventListener('click', function() { rotateSelected(-15); });
+  document.getElementById('rotateCW').addEventListener('click', function() { rotateSelected(15); });
+  document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+
+  // --- Canvas Drag Events (Mouse) ---
+  canvas.addEventListener('mousemove', function(evt) {
+    if (isDragging && selectedElement && currentMode === 'move') {
+      evt.preventDefault();
+      var rect = canvas.getBoundingClientRect();
+      selectedElement.setAttribute('data-x', evt.clientX - rect.left - offset.x);
+      selectedElement.setAttribute('data-y', evt.clientY - rect.top - offset.y);
+      updateTransform(selectedElement);
+    }
+  });
+
+  // --- Canvas Drag Events (Touch) ---
+  canvas.addEventListener('touchmove', function(evt) {
+    if (isDragging && selectedElement && currentMode === 'move') {
+      evt.preventDefault();
+      var touch = evt.touches[0];
+      var rect = canvas.getBoundingClientRect();
+      selectedElement.setAttribute('data-x', touch.clientX - rect.left - offset.x);
+      selectedElement.setAttribute('data-y', touch.clientY - rect.top - offset.y);
+      updateTransform(selectedElement);
+    }
+  }, {passive: false});
+
+  window.addEventListener('mouseup', function() {
+    if (isDragging && selectedElement && currentMode === 'move') {
+      checkAndApplySnap(selectedElement);
+    }
+    isDragging = false;
+  });
+
+  window.addEventListener('touchend', function() {
+    if (isDragging && selectedElement && currentMode === 'move') {
+      checkAndApplySnap(selectedElement);
+    }
+    isDragging = false;
+  });
+
+  canvas.addEventListener('mouseleave', function() { isDragging = false; });
+
+  canvas.addEventListener('mousedown', function(evt) {
+    if (evt.target === canvas && selectedElement) {
+      selectedElement.classList.remove('selected');
+      selectedElement = null;
+    }
+  });
+
+  canvas.addEventListener('touchstart', function(evt) {
+    if (evt.target === canvas && selectedElement) {
+      selectedElement.classList.remove('selected');
+      selectedElement = null;
+    }
+  });
+</script>
+
+
+
+</body></html>
