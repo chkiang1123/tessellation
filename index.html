@@ -1,132 +1,112 @@
-<!DOCTYPE html><html lang="en"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+<!DOCTYPE html>
+<html lang="en">
+<head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Advanced Tessellation Explorer - With Snapping</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pro Tessellation Explorer - Multi-Touch & Nested Groups</title>
 <style>
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background-color: #f0f2f5;
+  /* 1. LOCK THE ENTIRE PAGE TO THE SCREEN */
+  html, body {
+    width: 100%;
+    height: 100%;
     margin: 0;
-    padding: 20px;
-    user-select: none;
-  }
-  h2 { color: #333; margin-top: 0; }
-
-  #toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 20px;
-    padding: 15px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    align-items: center;
-    max-width: 850px;
-    justify-content: center;
+    padding: 0;
+    overflow: hidden; 
+    position: fixed; 
+    box-sizing: border-box;
   }
 
+  body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    display: flex; 
+    flex-direction: column; 
+    background-color: #f0f2f5; 
+    user-select: none; 
+    -webkit-user-select: none; 
+    touch-action: none; 
+  }
+  
+  *, *:before, *:after { box-sizing: inherit; }
+
+  /* 2. HEADER AREA */
+  #header-area {
+    padding: 10px 10px 5px 10px;
+    text-align: center;
+    flex-shrink: 0; 
+  }
+  h2 { color: #333; margin: 0 0 5px 0; font-size: 22px; }
+  .subtitle { color: #64748b; font-size: 13px; margin: 0; }
+  
+  /* 3. TOOLBAR */
+  #toolbar { 
+    display: flex; flex-wrap: wrap; gap: 8px; margin: 10px auto; 
+    padding: 10px; background: white; border-radius: 8px; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); align-items: center; justify-content: center;
+    max-width: 1050px; width: 95%; flex-shrink: 0; 
+    max-height: 25vh; overflow-y: auto;
+  }
+  
   .control-group {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    border-right: 2px solid #e2e8f0;
-    padding-right: 15px;
+    display: flex; gap: 6px; align-items: center; border-right: 2px solid #e2e8f0; padding-right: 8px;
+    flex-wrap: wrap; justify-content: center;
   }
   .control-group:last-child { border-right: none; padding-right: 0; }
 
-  button, select, input {
-    padding: 8px 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    cursor: pointer;
-    background: #fff;
-    font-size: 16px;
-    transition: all 0.2s;
+  button, select, input { 
+    padding: 8px 12px; 
+    border: 1px solid #ccc; border-radius: 6px; 
+    cursor: pointer; background: #fff; font-size: 14px; transition: all 0.2s;
   }
-
   button:hover, select:hover { background: #e2e8f0; }
-
+  
   .mode-btn { background: #f8fafc; color: #475569; }
   .mode-btn.active { background: #3b82f6; color: white; border-color: #2563eb; }
+  .action-btn { background: #10b981; color: white; border-color: #059669; font-weight: bold; }
+  .action-btn:hover { background: #059669; }
+  .action-btn.danger { background: #f59e0b; border-color: #d97706; }
+  .action-btn.danger:hover { background: #d97706; }
+  .action-btn.copy { background: #8b5cf6; border-color: #7c3aed; }
+  .action-btn.copy:hover { background: #7c3aed; }
+  input[type="color"] { padding: 0; width: 36px; height: 36px; border: none; background: none; cursor: pointer;}
+  
+  /* 4. CANVAS AREA */
+  #canvas-container {
+    flex-grow: 1; 
+    width: 100%;
+    padding: 0 10px 10px 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 0; 
+  }
 
-  input[type="color"] { padding: 0; width: 36px; height: 36px; border: none; background: none; }
-
-  /* The SVG Canvas */
-  svg {
-    background-color: white;
-    border: 2px solid #cbd5e1;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    cursor: default;
-    overflow: hidden;
-    max-width: 100%;
+  svg { 
+    width: 100%; 
+    height: 100%; 
+    background-color: white; border: 2px solid #cbd5e1; border-radius: 8px; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: default; overflow: hidden;
     touch-action: none;
   }
-
-  .shape {
-    cursor: pointer;
-    stroke: #334155;
-    stroke-width: 2;
-    transition: filter 0.1s;
-  }
-
+  
+  .shape { cursor: pointer; stroke: #334155; stroke-width: 2; transition: filter 0.1s; }
   .shape:hover { filter: brightness(0.9); }
-
-  /* Highlight the currently selected shape */
-  .shape.selected {
-    stroke: #ef4444;
-    stroke-width: 3;
-    stroke-dasharray: 4;
-  }
-
-  .magnet-indicator {
-    font-size: 12px;
-    color: #059669;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  /* Dark mode */
-  .dark body {
-    background-color: #1e293b;
-    color: #e2e8f0;
-  }
-  .dark h2 { color: #e2e8f0; }
-  .dark #toolbar {
-    background: #334155;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-  }
-  .dark button, .dark select, .dark input {
-    background: #475569;
-    color: #e2e8f0;
-    border-color: #64748b;
-  }
-  .dark button:hover, .dark select:hover { background: #64748b; }
-  .dark .mode-btn { background: #475569; color: #cbd5e1; }
-  .dark .mode-btn.active { background: #3b82f6; color: white; border-color: #2563eb; }
-  .dark svg {
-    background-color: #1e293b;
-    border-color: #475569;
-  }
-  .dark .control-group { border-right-color: #475569; }
-  .dark .magnet-indicator { color: #34d399; }
+  
+  /* Highlight selected shapes */
+  .shape.selected > polygon, polygon.shape.selected { stroke: #ef4444; stroke-width: 3; stroke-dasharray: 4; }
 </style>
 </head>
 <body>
 
-<h2>Advanced Tessellation Explorer</h2>
+<div id="header-area">
+  <h2>Pro Tessellation Explorer</h2>
+  <div class="subtitle">Multi-Touch Zoom, Canvas Panning, and Nested Grouping!</div>
+</div>
 
 <div id="toolbar">
   <div class="control-group">
     <select id="shapeSelect">
       <option value="3">Triangle (3)</option>
-      <option value="4">Square (4)</option>
+      <option value="4">Quadrilateral (4)</option>
       <option value="5">Pentagon (5)</option>
       <option value="6">Hexagon (6)</option>
       <option value="7">Heptagon (7)</option>
@@ -136,297 +116,516 @@
       <option value="11">Hendecagon (11)</option>
       <option value="12">Dodecagon (12)</option>
     </select>
-    <button id="addBtn" style="font-weight: bold; color: #059669;">➕ Add</button>
+    <button onclick="addShape()">➕ Add</button>
   </div>
 
   <div class="control-group">
-    <button id="btnMove" class="mode-btn active">🖐️ Move</button>
-    <button id="btnPaint" class="mode-btn">🎨 Paint</button>
-    <button id="btnErase" class="mode-btn">🧽 Eraser</button>
-    <input type="color" id="colorPicker" value="#3b82f6" title="Choose Paint Color">
+    <button id="btnMove" class="mode-btn active" onclick="setMode('move')">🖐️ Move</button>
+    <button id="btnSelect" class="mode-btn" onclick="setMode('select')">👆 Select</button>
+    <button id="btnPaint" class="mode-btn" onclick="setMode('paint')">🎨 Paint</button>
+    <input type="color" id="colorPicker" value="#3b82f6" title="Color">
+    <button id="btnErase" class="mode-btn" onclick="setMode('erase')">🧽 Erase</button>
   </div>
 
   <div class="control-group">
-    <button id="rotateCCW" title="Rotate Counter-Clockwise">↺ 15°</button>
-    <button id="rotateCW" title="Rotate Clockwise">↻ 15°</button>
+    <button onclick="groupSelected()" class="action-btn" title="Combine selected shapes">🔗 Glue</button>
+    <button onclick="ungroupSelected()" class="action-btn danger" title="Break apart selected group">🔨 Ungroup</button>
+    <button onclick="copySelected()" class="action-btn copy" title="Duplicate selected">📄 Copy</button>
   </div>
 
   <div class="control-group">
-    <button id="clearBtn" style="color: #ef4444;">🗑️ Clear All</button>
+    <button onclick="undo()" title="Undo">↩️</button>
+    <button onclick="redo()" title="Redo">↪️</button>
+    <button onclick="rotateSelected(-15)">↺</button>
+    <button onclick="rotateSelected(15)">↻</button>
   </div>
-
-  <div class="magnet-indicator">🧲 Auto-Snap On</div>
+  
+  <div class="control-group">
+    <button onclick="clearCanvas()" style="color: #ef4444;">🗑️</button>
+  </div>
 </div>
 
-<svg id="canvas" width="900" height="600"></svg>
+<div id="canvas-container">
+  <svg id="canvas" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet"></svg>
+</div>
 
 <script>
-  // Dark mode detection
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    document.documentElement.classList.add('dark');
+  const canvas = document.getElementById('canvas');
+  const canvasContainer = document.getElementById('canvas-container');
+  const SIDE_LENGTH = 50; 
+  const SNAP_RADIUS = 20; 
+  
+  let currentMode = 'move';
+  let selectedElements = new Set();
+  
+  // Interaction states
+  let isDragging = false;
+  let activeDragElement = null;
+  let offset = { x: 0, y: 0 };
+  
+  let isPanning = false;
+  let panStart = { x: 0, y: 0 };
+
+  // ViewBox & Gestures
+  let vX = 0, vY = 0, vW = 900, vH = 600;
+  let activePointers = new Map();
+  let initialPinchDistance = null;
+  let initialViewBox = null;
+  let initialPinchCenter = null;
+
+  // --- UNDO / REDO SYSTEM ---
+  let undoStack = [];
+  let redoStack = [];
+  let dragStartState = null;
+
+  function saveState() {
+    redoStack = []; 
+    undoStack.push({ html: canvas.innerHTML, vX: vX, vY: vY, vW: vW, vH: vH });
+    if (undoStack.length > 50) undoStack.shift(); 
   }
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(event) {
-    if (event.matches) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  });
 
-  var canvas = document.getElementById('canvas');
-  var SIDE_LENGTH = 50;
-  var SNAP_RADIUS = 20;
+  function restoreState(state) {
+    canvas.innerHTML = state.html;
+    vX = state.vX; vY = state.vY; vW = state.vW; vH = state.vH;
+    canvas.setAttribute('viewBox', `${vX} ${vY} ${vW} ${vH}`);
+    selectedElements.clear(); 
+    
+    // Restore nested groups safely
+    Array.from(canvas.querySelectorAll('polygon, g.shape-group')).forEach(el => {
+      el.addEventListener('pointerdown', handleShapeInteraction);
+      if (el.classList.contains('selected')) selectedElements.add(el);
+    });
+  }
 
-  var currentMode = 'move';
-  var selectedElement = null;
-  var isDragging = false;
-  var offset = { x: 0, y: 0 };
+  function undo() {
+    if (undoStack.length === 0) return;
+    redoStack.push({ html: canvas.innerHTML, vX: vX, vY: vY, vW: vW, vH: vH });
+    restoreState(undoStack.pop());
+  }
 
-  // --- Math Function: Generate Polygon Points ---
+  function redo() {
+    if (redoStack.length === 0) return;
+    undoStack.push({ html: canvas.innerHTML, vX: vX, vY: vY, vW: vW, vH: vH });
+    restoreState(redoStack.pop());
+  }
+
+  function getMousePos(evt) {
+    let CTM = canvas.getScreenCTM();
+    return { x: (evt.clientX - CTM.e) / CTM.a, y: (evt.clientY - CTM.f) / CTM.d };
+  }
+
   function generatePolygonPoints(sides) {
-    var radius = SIDE_LENGTH / (2 * Math.sin(Math.PI / sides));
-    var points = [];
-
-    var angleOffset = -Math.PI / 2;
-    if (sides % 2 === 0) { angleOffset -= Math.PI / sides; }
-
-    for (var i = 0; i < sides; i++) {
-      var angle = angleOffset + (i * 2 * Math.PI) / sides;
-      var x = radius * Math.cos(angle);
-      var y = radius * Math.sin(angle);
-      points.push(x + ',' + y);
+    const radius = SIDE_LENGTH / (2 * Math.sin(Math.PI / sides));
+    let points = [];
+    let angleOffset = -Math.PI / 2;
+    if (sides % 2 === 0) angleOffset -= Math.PI / sides;
+    for (let i = 0; i < sides; i++) {
+      const angle = angleOffset + (i * 2 * Math.PI) / sides;
+      points.push(`${radius * Math.cos(angle)},${radius * Math.sin(angle)}`);
     }
     return points.join(' ');
   }
 
-  // --- Magnetic Snapping Math ---
-  function getAbsoluteVertices(shape) {
-    var pointsStr = shape.getAttribute('points');
-    var points = pointsStr.split(' ').map(function(p) {
-      var parts = p.split(',').map(Number);
-      return {x: parts[0], y: parts[1]};
-    });
-
-    var cx = parseFloat(shape.getAttribute('data-x'));
-    var cy = parseFloat(shape.getAttribute('data-y'));
-    var angleDeg = parseFloat(shape.getAttribute('data-angle')) || 0;
-    var angleRad = angleDeg * Math.PI / 180;
-
-    return points.map(function(p) {
-      var rx = p.x * Math.cos(angleRad) - p.y * Math.sin(angleRad);
-      var ry = p.x * Math.sin(angleRad) + p.y * Math.cos(angleRad);
-      return { x: rx + cx, y: ry + cy };
-    });
+  // Universally resolves nested positions by calculating the final screen matrix
+  function getAbsoluteVertices(element) {
+    let verts = [];
+    let polygons = element.tagName.toLowerCase() === 'g' ? element.querySelectorAll('polygon') : [element];
+    let svgCTM = canvas.getScreenCTM().inverse(); 
+    
+    for(let poly of polygons) {
+      let ptsStr = poly.getAttribute('points');
+      if(!ptsStr) continue;
+      let points = ptsStr.split(' ').map(p => { let [x, y] = p.split(',').map(Number); return {x, y}; });
+      let polyCTM = poly.getScreenCTM();
+      let matrix = svgCTM.multiply(polyCTM);
+      
+      points.forEach(p => {
+        let pt = canvas.createSVGPoint(); pt.x = p.x; pt.y = p.y;
+        let transformed = pt.matrixTransform(matrix);
+        verts.push({x: transformed.x, y: transformed.y});
+      });
+    }
+    return verts;
   }
 
   function checkAndApplySnap(draggedShape) {
-    var draggedVerts = getAbsoluteVertices(draggedShape);
-    var otherShapes = Array.from(document.querySelectorAll('.shape')).filter(function(s) { return s !== draggedShape; });
+    const draggedVerts = getAbsoluteVertices(draggedShape);
+    const otherShapes = Array.from(canvas.querySelectorAll('.shape')).filter(s => s !== draggedShape && s.parentNode === canvas);
 
-    var bestSnap = null;
-    var minDistance = SNAP_RADIUS;
+    let bestSnap = null, minDistance = SNAP_RADIUS;
 
-    for (var si = 0; si < otherShapes.length; si++) {
-      var otherVerts = getAbsoluteVertices(otherShapes[si]);
-      for (var di = 0; di < draggedVerts.length; di++) {
-        for (var oi = 0; oi < otherVerts.length; oi++) {
-          var dist = Math.hypot(draggedVerts[di].x - otherVerts[oi].x, draggedVerts[di].y - otherVerts[oi].y);
+    for (const other of otherShapes) {
+      const otherVerts = getAbsoluteVertices(other);
+      for (const dv of draggedVerts) {
+        for (const ov of otherVerts) {
+          const dist = Math.hypot(dv.x - ov.x, dv.y - ov.y); 
           if (dist < minDistance) {
             minDistance = dist;
-            bestSnap = { dx: otherVerts[oi].x - draggedVerts[di].x, dy: otherVerts[oi].y - draggedVerts[di].y };
+            bestSnap = { dx: ov.x - dv.x, dy: ov.y - dv.y };
           }
         }
       }
     }
 
     if (bestSnap) {
-      var currentX = parseFloat(draggedShape.getAttribute('data-x'));
-      var currentY = parseFloat(draggedShape.getAttribute('data-y'));
-      draggedShape.setAttribute('data-x', currentX + bestSnap.dx);
-      draggedShape.setAttribute('data-y', currentY + bestSnap.dy);
+      const cx = parseFloat(draggedShape.getAttribute('data-x'));
+      const cy = parseFloat(draggedShape.getAttribute('data-y'));
+      draggedShape.setAttribute('data-x', cx + bestSnap.dx);
+      draggedShape.setAttribute('data-y', cy + bestSnap.dy);
       updateTransform(draggedShape);
     }
   }
 
-  // --- Core Application Logic ---
   function setMode(mode) {
     currentMode = mode;
-    document.querySelectorAll('.mode-btn').forEach(function(btn) { btn.classList.remove('active'); });
-
-    if(mode === 'move') { document.getElementById('btnMove').classList.add('active'); }
-    if(mode === 'paint') { document.getElementById('btnPaint').classList.add('active'); }
-    if(mode === 'erase') { document.getElementById('btnErase').classList.add('active'); }
-
-    canvas.style.cursor = mode === 'erase' ? 'crosshair' : 'default';
+    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if(mode === 'move') document.getElementById('btnMove').classList.add('active');
+    if(mode === 'select') document.getElementById('btnSelect').classList.add('active');
+    if(mode === 'paint') document.getElementById('btnPaint').classList.add('active');
+    if(mode === 'erase') document.getElementById('btnErase').classList.add('active');
+    
+    canvas.style.cursor = mode === 'select' ? 'cell' : 'default';
+    if(mode !== 'select' && mode !== 'move') clearSelection();
   }
 
   function addShape() {
-    var sides = parseInt(document.getElementById('shapeSelect').value);
-    var color = document.getElementById('colorPicker').value;
-
-    var polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    saveState(); 
+    const sides = parseInt(document.getElementById('shapeSelect').value);
+    const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
     polygon.setAttribute("points", generatePolygonPoints(sides));
-    polygon.setAttribute("fill", color);
+    polygon.setAttribute("fill", document.getElementById('colorPicker').value);
     polygon.setAttribute("class", "shape");
-
-    var startX = 450 + (Math.random() * 60 - 30);
-    var startY = 300 + (Math.random() * 60 - 30);
-
-    polygon.setAttribute('data-x', startX);
-    polygon.setAttribute('data-y', startY);
+    
+    // Add to center of current view
+    polygon.setAttribute('data-x', vX + (vW / 2) + (Math.random() * 40 - 20));
+    polygon.setAttribute('data-y', vY + (vH / 2) + (Math.random() * 40 - 20));
     polygon.setAttribute('data-angle', 0);
-
+    
     updateTransform(polygon);
-    polygon.addEventListener('mousedown', handleShapeInteraction);
-    polygon.addEventListener('touchstart', handleTouchStart, {passive: false});
+    polygon.addEventListener('pointerdown', handleShapeInteraction);
     canvas.appendChild(polygon);
-    selectShape(polygon);
+    
+    singleSelect(polygon);
+    setMode('move');
+  }
+
+  function singleSelect(el) {
+    clearSelection();
+    selectedElements.add(el); el.classList.add('selected');
+  }
+
+  function clearSelection() {
+    selectedElements.forEach(el => el.classList.remove('selected'));
+    selectedElements.clear();
   }
 
   function handleShapeInteraction(evt) {
-    if (currentMode === 'erase') {
-      evt.target.remove();
-      if (selectedElement === evt.target) { selectedElement = null; }
+    evt.stopPropagation(); 
+    if (activePointers.size >= 2) return; // Block interactions if zooming
+
+    let el = evt.currentTarget; 
+
+    // RECURSIVE GROUP FIX: Always climb to the very top group
+    if (currentMode !== 'paint') {
+      while (el.parentNode && el.parentNode !== canvas && el.parentNode.classList.contains('shape-group')) {
+        el = el.parentNode;
+      }
+    }
+
+    if (currentMode === 'erase') { 
+      saveState();
+      el.remove(); 
+      selectedElements.delete(el);
+      return; 
+    }
+    
+    if (currentMode === 'paint') {
+      if(evt.target.tagName.toLowerCase() === 'polygon') { 
+        saveState(); 
+        evt.target.setAttribute("fill", document.getElementById('colorPicker').value); 
+      }
       return;
     }
 
-    if (currentMode === 'paint') {
-      evt.target.setAttribute("fill", document.getElementById('colorPicker').value);
+    if (currentMode === 'select') {
+      if (selectedElements.has(el)) {
+        selectedElements.delete(el); el.classList.remove('selected');
+      } else {
+        selectedElements.add(el); el.classList.add('selected');
+      }
+      canvas.appendChild(el);
       return;
     }
 
     if (currentMode === 'move') {
-      selectShape(evt.target);
+      if (!selectedElements.has(el)) singleSelect(el);
+      
+      dragStartState = { html: canvas.innerHTML, vX: vX, vY: vY, vW: vW, vH: vH };
       isDragging = true;
-      canvas.appendChild(selectedElement);
-
-      var rect = canvas.getBoundingClientRect();
-      var currentX = parseFloat(selectedElement.getAttribute('data-x'));
-      var currentY = parseFloat(selectedElement.getAttribute('data-y'));
-      offset.x = evt.clientX - rect.left - currentX;
-      offset.y = evt.clientY - rect.top - currentY;
+      activeDragElement = el;
+      
+      let pos = getMousePos(evt);
+      offset.x = pos.x - parseFloat(el.getAttribute('data-x'));
+      offset.y = pos.y - parseFloat(el.getAttribute('data-y'));
+      
+      el.setPointerCapture(evt.pointerId);
     }
   }
 
-  function handleTouchStart(evt) {
-    evt.preventDefault();
-    var touch = evt.touches[0];
-    var target = evt.target;
+  function groupSelected() {
+    let elements = Array.from(selectedElements).filter(el => el.parentNode === canvas);
+    if (elements.length <= 1) return; 
+    saveState(); 
+    
+    let sumX = 0, sumY = 0;
+    elements.forEach(el => {
+      sumX += parseFloat(el.getAttribute('data-x'));
+      sumY += parseFloat(el.getAttribute('data-y'));
+    });
+    let cx = sumX / elements.length;
+    let cy = sumY / elements.length;
 
-    if (currentMode === 'erase') {
-      target.remove();
-      if (selectedElement === target) { selectedElement = null; }
-      return;
-    }
-
-    if (currentMode === 'paint') {
-      target.setAttribute("fill", document.getElementById('colorPicker').value);
-      return;
-    }
-
-    if (currentMode === 'move') {
-      selectShape(target);
-      isDragging = true;
-      canvas.appendChild(selectedElement);
-
-      var rect = canvas.getBoundingClientRect();
-      var currentX = parseFloat(selectedElement.getAttribute('data-x'));
-      var currentY = parseFloat(selectedElement.getAttribute('data-y'));
-      offset.x = touch.clientX - rect.left - currentX;
-      offset.y = touch.clientY - rect.top - currentY;
-    }
+    let g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute('class', 'shape shape-group selected');
+    g.setAttribute('data-x', cx);
+    g.setAttribute('data-y', cy);
+    g.setAttribute('data-angle', 0);
+    
+    // Elements added to the new group safely retain their inner nested groups
+    elements.forEach(el => {
+      el.classList.remove('selected');
+      el.setAttribute('data-x', parseFloat(el.getAttribute('data-x')) - cx);
+      el.setAttribute('data-y', parseFloat(el.getAttribute('data-y')) - cy);
+      updateTransform(el);
+      g.appendChild(el);
+    });
+    
+    clearSelection();
+    selectedElements.add(g);
+    updateTransform(g);
+    g.addEventListener('pointerdown', handleShapeInteraction);
+    canvas.appendChild(g);
+    setMode('move');
   }
 
-  function selectShape(shape) {
-    if (selectedElement) { selectedElement.classList.remove('selected'); }
-    selectedElement = shape;
-    selectedElement.classList.add('selected');
+  function ungroupSelected() {
+    let groups = Array.from(selectedElements).filter(el => el.classList.contains('shape-group'));
+    if (groups.length === 0) return;
+    saveState();
+    clearSelection();
+
+    // Peels exactly ONE layer off. Inner nested groups stay grouped!
+    groups.forEach(group => {
+      let children = Array.from(group.children);
+      let gX = parseFloat(group.getAttribute('data-x'));
+      let gY = parseFloat(group.getAttribute('data-y'));
+      let gA = parseFloat(group.getAttribute('data-angle')) * Math.PI / 180;
+      
+      children.forEach(p => {
+        let pX = parseFloat(p.getAttribute('data-x'));
+        let pY = parseFloat(p.getAttribute('data-y'));
+        let pA = parseFloat(p.getAttribute('data-angle')) || 0;
+        
+        let newX = pX * Math.cos(gA) - pY * Math.sin(gA) + gX;
+        let newY = pX * Math.sin(gA) + pY * Math.cos(gA) + gY;
+        let newA = pA + (parseFloat(group.getAttribute('data-angle')) || 0);
+        
+        p.setAttribute('data-x', newX);
+        p.setAttribute('data-y', newY);
+        p.setAttribute('data-angle', newA);
+        updateTransform(p);
+        canvas.appendChild(p);
+        
+        selectedElements.add(p);
+        p.classList.add('selected');
+      });
+      group.remove();
+    });
+    setMode('move');
+  }
+
+  function copySelected() {
+    if (selectedElements.size === 0) return;
+    saveState(); 
+    let newSelection = new Set();
+    
+    selectedElements.forEach(el => {
+      let clone = el.cloneNode(true);
+      let newX = parseFloat(el.getAttribute('data-x')) + 30;
+      let newY = parseFloat(el.getAttribute('data-y')) + 30;
+      
+      clone.setAttribute('data-x', newX);
+      clone.setAttribute('data-y', newY);
+      updateTransform(clone);
+      
+      // Reattach interactions universally to all cloned pieces (groups and polygons)
+      clone.addEventListener('pointerdown', handleShapeInteraction);
+      Array.from(clone.querySelectorAll('polygon, g.shape-group')).forEach(child => {
+        child.addEventListener('pointerdown', handleShapeInteraction);
+      });
+      
+      canvas.appendChild(clone);
+      newSelection.add(clone);
+    });
+    
+    clearSelection();
+    newSelection.forEach(el => {
+      selectedElements.add(el);
+      el.classList.add('selected');
+    });
+    setMode('move');
   }
 
   function rotateSelected(degrees) {
-    if (!selectedElement) { return; }
-    var currentAngle = parseFloat(selectedElement.getAttribute('data-angle')) || 0;
-    currentAngle += degrees;
-    selectedElement.setAttribute('data-angle', currentAngle);
-    updateTransform(selectedElement);
-    checkAndApplySnap(selectedElement);
+    if (selectedElements.size === 0) return;
+    saveState(); 
+    selectedElements.forEach(el => {
+      let currentAngle = parseFloat(el.getAttribute('data-angle')) || 0;
+      el.setAttribute('data-angle', currentAngle + degrees);
+      updateTransform(el);
+      checkAndApplySnap(el);
+    });
   }
 
   function updateTransform(el) {
-    var x = el.getAttribute('data-x');
-    var y = el.getAttribute('data-y');
-    var angle = el.getAttribute('data-angle');
-    el.setAttribute("transform", "translate(" + x + ", " + y + ") rotate(" + angle + ")");
+    const x = el.getAttribute('data-x');
+    const y = el.getAttribute('data-y');
+    const angle = el.getAttribute('data-angle');
+    el.setAttribute("transform", `translate(${x}, ${y}) rotate(${angle})`);
   }
 
   function clearCanvas() {
-    canvas.innerHTML = '';
-    selectedElement = null;
+    if (canvas.querySelectorAll('.shape').length === 0) return;
+    saveState(); 
+    Array.from(canvas.querySelectorAll('.shape')).forEach(el => el.remove());
+    selectedElements.clear();
   }
 
-  // --- Button Event Listeners ---
-  document.getElementById('addBtn').addEventListener('click', addShape);
-  document.getElementById('btnMove').addEventListener('click', function() { setMode('move'); });
-  document.getElementById('btnPaint').addEventListener('click', function() { setMode('paint'); });
-  document.getElementById('btnErase').addEventListener('click', function() { setMode('erase'); });
-  document.getElementById('rotateCCW').addEventListener('click', function() { rotateSelected(-15); });
-  document.getElementById('rotateCW').addEventListener('click', function() { rotateSelected(15); });
-  document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+  // --- MULTI-TOUCH GLOBAL GESTURE TRACKING ---
 
-  // --- Canvas Drag Events (Mouse) ---
-  canvas.addEventListener('mousemove', function(evt) {
-    if (isDragging && selectedElement && currentMode === 'move') {
+  // Capture phase on container ensuring we track ALL fingers, even on shapes
+  canvasContainer.addEventListener('pointerdown', (evt) => {
+    activePointers.set(evt.pointerId, evt);
+    
+    if (activePointers.size === 2) {
+      isPanning = false; // Cancel pan
+      
+      // Cancel drag if zooming overrides it
+      if (isDragging && activeDragElement) {
+        isDragging = false;
+        if (activeDragElement.hasPointerCapture(evt.pointerId)) {
+           activeDragElement.releasePointerCapture(evt.pointerId);
+        }
+        activeDragElement = null;
+      }
+
+      // Initialize Pinch Data
+      let pts = Array.from(activePointers.values());
+      initialPinchDistance = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+      initialViewBox = { vX, vY, vW, vH };
+      
+      // Lock zoom onto exact center of the pinch
+      let cx = (pts[0].clientX + pts[1].clientX) / 2;
+      let cy = (pts[0].clientY + pts[1].clientY) / 2;
+      let CTM = canvas.getScreenCTM();
+      initialPinchCenter = { x: (cx - CTM.e) / CTM.a, y: (cy - CTM.f) / CTM.d };
+    }
+  }, { capture: true });
+
+  // Handle single-finger panning on background
+  canvas.addEventListener('pointerdown', (evt) => {
+    if (evt.target === canvas) {
+      clearSelection();
+      if (activePointers.size === 1) { 
+        isPanning = true;
+        panStart = { x: evt.clientX, y: evt.clientY };
+        canvas.setPointerCapture(evt.pointerId);
+      }
+    }
+  });
+
+  window.addEventListener('pointermove', (evt) => {
+    if (activePointers.has(evt.pointerId)) {
+      activePointers.set(evt.pointerId, evt);
+    }
+
+    // GESTURE 1: Two-finger Pinch to Zoom
+    if (activePointers.size === 2) {
       evt.preventDefault();
-      var rect = canvas.getBoundingClientRect();
-      selectedElement.setAttribute('data-x', evt.clientX - rect.left - offset.x);
-      selectedElement.setAttribute('data-y', evt.clientY - rect.top - offset.y);
-      updateTransform(selectedElement);
-    }
-  });
+      let pts = Array.from(activePointers.values());
+      let currentDistance = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+      
+      if (initialPinchDistance && currentDistance > 0) {
+        let scale = initialPinchDistance / currentDistance;
+        
+        if (initialViewBox.vW * scale > 15000 || initialViewBox.vW * scale < 100) return; // Prevent breaking limits
 
-  // --- Canvas Drag Events (Touch) ---
-  canvas.addEventListener('touchmove', function(evt) {
-    if (isDragging && selectedElement && currentMode === 'move') {
+        vW = initialViewBox.vW * scale;
+        vH = initialViewBox.vH * scale;
+        vX = initialPinchCenter.x - (initialPinchCenter.x - initialViewBox.vX) * scale;
+        vY = initialPinchCenter.y - (initialPinchCenter.y - initialViewBox.vY) * scale;
+        
+        canvas.setAttribute('viewBox', `${vX} ${vY} ${vW} ${vH}`);
+      }
+    } 
+    // GESTURE 2: Single-finger Drag Shape
+    else if (isDragging && activeDragElement && currentMode === 'move' && activePointers.size === 1) {
       evt.preventDefault();
-      var touch = evt.touches[0];
-      var rect = canvas.getBoundingClientRect();
-      selectedElement.setAttribute('data-x', touch.clientX - rect.left - offset.x);
-      selectedElement.setAttribute('data-y', touch.clientY - rect.top - offset.y);
-      updateTransform(selectedElement);
+      let pos = getMousePos(evt);
+      activeDragElement.setAttribute('data-x', pos.x - offset.x);
+      activeDragElement.setAttribute('data-y', pos.y - offset.y);
+      updateTransform(activeDragElement);
     }
-  }, {passive: false});
-
-  window.addEventListener('mouseup', function() {
-    if (isDragging && selectedElement && currentMode === 'move') {
-      checkAndApplySnap(selectedElement);
+    // GESTURE 3: Single-finger Pan Canvas Background
+    else if (isPanning && activePointers.size === 1) {
+      evt.preventDefault();
+      let dx = evt.clientX - panStart.x;
+      let dy = evt.clientY - panStart.y;
+      
+      let CTM = canvas.getScreenCTM();
+      vX -= dx / CTM.a;
+      vY -= dy / CTM.d;
+      canvas.setAttribute('viewBox', `${vX} ${vY} ${vW} ${vH}`);
+      
+      panStart = { x: evt.clientX, y: evt.clientY };
     }
-    isDragging = false;
-  });
+  }, { passive: false });
 
-  window.addEventListener('touchend', function() {
-    if (isDragging && selectedElement && currentMode === 'move') {
-      checkAndApplySnap(selectedElement);
+  // Cleanup loop when lifting fingers
+  function endGestures(evt) {
+    activePointers.delete(evt.pointerId);
+    
+    if (activePointers.size < 2) {
+      initialPinchDistance = null;
+      initialPinchCenter = null;
+      initialViewBox = null;
     }
-    isDragging = false;
-  });
+    
+    if (isPanning) isPanning = false;
 
-  canvas.addEventListener('mouseleave', function() { isDragging = false; });
+    if (isDragging && activeDragElement) {
+      checkAndApplySnap(activeDragElement);
+      canvas.appendChild(activeDragElement); // Push to front visually on drop
 
-  canvas.addEventListener('mousedown', function(evt) {
-    if (evt.target === canvas && selectedElement) {
-      selectedElement.classList.remove('selected');
-      selectedElement = null;
+      if (dragStartState && dragStartState.html !== canvas.innerHTML) {
+         redoStack = []; 
+         undoStack.push(dragStartState);
+         if (undoStack.length > 50) undoStack.shift();
+      }
+      
+      if (activeDragElement.hasPointerCapture(evt.pointerId)) {
+        activeDragElement.releasePointerCapture(evt.pointerId);
+      }
+      isDragging = false; 
+      activeDragElement = null;
+      dragStartState = null;
     }
-  });
+  }
 
-  canvas.addEventListener('touchstart', function(evt) {
-    if (evt.target === canvas && selectedElement) {
-      selectedElement.classList.remove('selected');
-      selectedElement = null;
-    }
-  });
+  window.addEventListener('pointerup', endGestures);
+  window.addEventListener('pointercancel', endGestures);
 </script>
 
-
-
-</body></html>
+</body>
+</html>
